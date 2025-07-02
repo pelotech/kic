@@ -21,7 +21,6 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -32,6 +31,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -87,9 +87,12 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 
-	flag.StringVar(&watchedNamespaces, "watched-namespaces", "", "A comma-separated list of namespaces to watch for Ingresses. If empty, all namespaces are watched.")
-	flag.StringVar(&ingressAnnotation, "ingress-annotation", "", "The annotation to look for on Ingresses. If not set, all Ingresses are considered.")
-	flag.StringVar(&ingressControllerService, "ingress-controller-service", "ingress-nginx-controller.ingress-nginx.svc.cluster.local", "The fully qualified domain name of the ingress controller service.")
+	flag.StringVar(&watchedNamespaces, "watched-namespaces", "",
+		"A comma-separated list of namespaces to watch for Ingresses. If empty, all namespaces are watched.")
+	flag.StringVar(&ingressAnnotation, "ingress-annotation", "",
+		"The annotation to look for on Ingresses. If not set, all Ingresses are considered.")
+	flag.StringVar(&ingressControllerService, "ingress-controller-service", "controller.nginx.svc.cluster.local",
+		"The fully qualified domain name of the ingress controller service.")
 
 	opts := zap.Options{
 		Development: true,
