@@ -41,10 +41,10 @@ const (
 // IngressReconciler reconciles a Ingress object
 type IngressReconciler struct {
 	client.Client
-	Log                      logr.Logger
-	Scheme                   *runtime.Scheme
-	IngressAnnotation        string
-	IngressControllerService string
+	Log                          logr.Logger
+	Scheme                       *runtime.Scheme
+	IngressAnnotation            string
+	IngressControllerServiceName string
 }
 
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
@@ -117,7 +117,7 @@ func (r *IngressReconciler) updateCoreDNSConfigMap(ctx context.Context) error {
 
 		for _, rule := range ingress.Spec.Rules {
 			if rule.Host != "" {
-				newRewriteRules.WriteString(fmt.Sprintf(rewriteRuleFormat, rule.Host, r.IngressControllerService))
+				newRewriteRules.WriteString(fmt.Sprintf(rewriteRuleFormat, rule.Host, r.IngressControllerServiceName))
 			}
 		}
 	}

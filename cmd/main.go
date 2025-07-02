@@ -225,11 +225,11 @@ func main() {
 	}
 
 	if err = (&controller.IngressReconciler{
-		Client:                   mgr.GetClient(),
-		Scheme:                   mgr.GetScheme(),
-		Log:                      ctrl.Log.WithName("controllers").WithName("Ingress"),
-		IngressAnnotation:        ingressAnnotation,
-		IngressControllerService: ingressControllerService,
+		Client:                       mgr.GetClient(),
+		Scheme:                       mgr.GetScheme(),
+		Log:                          ctrl.Log.WithName("controllers").WithName("Ingress"),
+		IngressAnnotation:            ingressAnnotation,
+		IngressControllerServiceName: ingressControllerService,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
 		os.Exit(1)
