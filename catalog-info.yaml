@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: kic
+  description: K8s controller to update dns (currently coredns) with ingress configuration to help remove hairpin.
+  # Example for optional annotations
+  annotations:
+    github.com/project-slug: pelotech/kic
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  owner: group:pelotech/leads
+  lifecycle: alpha

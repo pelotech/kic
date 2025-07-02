@@ -1,0 +1,9 @@
+site_name: kic
+site_description: K8s controller to update dns (currently coredns) with ingress configuration to help remove hairpin.
+nav:
+  - Home: README.md
+  - Contributors: CONTRIBUTORS.md
+
+plugins:
+  - techdocs-core
+  - monorepo

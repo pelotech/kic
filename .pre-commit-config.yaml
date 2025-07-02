@@ -1,0 +1,28 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+  - id: check-merge-conflict
+#  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: forbid-submodules
+#- repo: https://github.com/gruntwork-io/pre-commit
+#  rev: v0.1.23
+#  hooks:
+#  - id: helmlint
+#- repo: https://github.com/norwoodj/helm-docs
+#  rev: v1.12.0
+#  hooks:
+#  - id: helm-docs-built
+#    files: (README\.md\.gotmpl|(Chart|requirements|values)\.yaml)$
+#- repo: https://github.com/adrienverge/yamllint
+#  rev: v1.35.1
+#  hooks:
+#  - id: yamllint
+#    args: [--strict, -c=.yamllint]
+- repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+  rev: v9.16.0
+  hooks:
+  - id: commitlint
+    stages: [commit-msg]
+    additional_dependencies: ['@commitlint/config-conventional']
