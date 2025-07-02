@@ -21,6 +21,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -30,12 +31,15 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/pelotech/kic/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -60,6 +64,11 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
+
+	var watchedNamespaces string
+	var ingressAnnotation string
+	var ingressControllerService string
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -77,6 +86,14 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+
+	flag.StringVar(&watchedNamespaces, "watched-namespaces", "",
+		"A comma-separated list of namespaces to watch for Ingresses. If empty, all namespaces are watched.")
+	flag.StringVar(&ingressAnnotation, "ingress-annotation", "",
+		"The annotation to look for on Ingresses. If not set, all Ingresses are considered.")
+	flag.StringVar(&ingressControllerService, "ingress-controller-service", "controller.nginx.svc.cluster.local",
+		"The fully qualified domain name of the ingress controller service.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -84,6 +101,15 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	var cacheOpts cache.Options
+	if watchedNamespaces != "" {
+		ns := strings.Split(watchedNamespaces, ",")
+		cacheOpts.DefaultNamespaces = make(map[string]cache.Config, len(ns))
+		for _, n := range ns {
+			cacheOpts.DefaultNamespaces[strings.TrimSpace(n)] = cache.Config{}
+		}
+	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -198,6 +224,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controller.IngressReconciler{
+		Client:                       mgr.GetClient(),
+		Scheme:                       mgr.GetScheme(),
+		Log:                          ctrl.Log.WithName("controllers").WithName("Ingress"),
+		IngressAnnotation:            ingressAnnotation,
+		IngressControllerServiceName: ingressControllerService,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {
