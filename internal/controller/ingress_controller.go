@@ -33,11 +33,11 @@ import (
 
 const (
 	coreDNSConfigMapName      = "coredns"
-	coreDNSConfigMapNamespace    = "kube-system"
-	corefileKey                  = "Corefile"
-	rewriteRuleFormat            = "rewrite name %s %s\n"
-	managedRulesBeginMarker      = "# BEGIN IngressReconciler managed rules"
-	managedRulesEndMarker        = "# END IngressReconciler managed rules"
+	coreDNSConfigMapNamespace = "kube-system"
+	corefileKey               = "Corefile"
+	rewriteRuleFormat         = "rewrite name %s %s\n"
+	managedRulesBeginMarker   = "# BEGIN IngressReconciler managed rules"
+	managedRulesEndMarker     = "# END IngressReconciler managed rules"
 )
 
 // IngressReconciler reconciles a Ingress object
