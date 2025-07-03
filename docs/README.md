@@ -4,7 +4,7 @@
 K8s controller to update dns (currently coredns) with ingress configuration to help remove hairpin
 
 # General
-This is an early stage project with limited scope
+This is an early stage project with limited scope. This is currently in alpha level status
 
 ## Assumptions on the k8s cluster
 1. tls termination is in cluster - invalid cert issues others
