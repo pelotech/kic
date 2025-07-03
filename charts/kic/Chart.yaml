@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kic
+description: A Helm chart for Kubernetes Image Cacher (kic)
+type: application
+version: 0.1.0
+appVersion: "latest" # This should ideally match the app version being deployed

@@ -1,0 +1,54 @@
+{{- /*
+Welcome to the kic Helm chart!
+*/ -}}
+
+1. Get the application parameters:
+   {{- /*
+   This chart deploys kic, the Kubernetes Image Cacher.
+   It typically runs as a DaemonSet or Deployment to pre-pull images on nodes.
+   Consult the main.go file or the application's documentation for command-line arguments.
+   You can pass these arguments via `values.yaml` under the `args:` key.
+
+   Example:
+   args:
+     - "--node-name=$(NODE_NAME)" # Assuming downward API for node name
+     - "--log-level=info"
+     - "--image-list-file=/etc/kic/images.txt" # If using a config file for images
+   */}}
+
+   To pass arguments to the kic container, configure `values.yaml`:
+
+   ```yaml
+   args:
+     - "--your-argument=value"
+     - "--another-argument=othervalue"
+   ```
+
+   {{ if .Values.serviceAccount.create -}}
+   A ServiceAccount `{{ include "kic.serviceAccountName" . }}` has been created.
+   Depending on your cluster configuration and how kic interacts with the Kubernetes API
+   (e.g., to list nodes or watch image events), you might need to grant this
+   ServiceAccount additional RBAC permissions (Roles/ClusterRoles and RoleBindings/ClusterRoleBindings).
+   {{ else }}
+   You are using the ServiceAccount `{{ include "kic.serviceAccountName" . }}`.
+   Ensure this ServiceAccount has the necessary RBAC permissions for kic to operate.
+   {{ end -}}
+
+   {{- if not .Values.service.enabled }}
+   The kic application, as configured, does not expose any service ports.
+   If you need to access it (e.g., for metrics, if it has an HTTP endpoint),
+   you can enable the service in `values.yaml`:
+
+   ```yaml
+   service:
+     enabled: true
+     type: ClusterIP # Or NodePort, LoadBalancer
+     port: <desired_port> # e.g. 8080
+   ```
+   Then, update the Deployment to ensure the container exposes that port.
+   {{- else }}
+   The kic service `{{ include "kic.fullname" . }}` is running.
+   You can access it within the cluster at `{{ include "kic.fullname" . }}:{{ .Values.service.port }}`.
+   {{- end }}
+
+For more information, please refer to the application documentation and the `values.yaml` file for all configurable options.

@@ -1,0 +1,25 @@
+{{- $metricsEnabled := ne .Values.controllerManager.metrics.bindAddress "0" -}}
+{{- $serviceExplicitlyEnabled := eq .Values.service.enabled true -}}
+{{- $serviceAutoEnabled := and (eq .Values.service.enabled "auto") $metricsEnabled -}}
+{{- if or $serviceExplicitlyEnabled $serviceAutoEnabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kic.fullname" . }}-metrics
+  labels:
+    {{- include "kic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort | default "metrics" }}
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "kic.selectorLabels" . | nindent 4 }}
+{{- end }}

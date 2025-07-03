@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kic.fullname" . }}
+  labels:
+    {{- include "kic.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kic.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kic.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kic.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--metrics-bind-address={{ .Values.controllerManager.metrics.bindAddress }}"
+            - "--health-probe-bind-address={{ .Values.controllerManager.health.bindAddress }}"
+            - "--leader-elect={{ .Values.controllerManager.leaderElect }}"
+            - "--metrics-secure={{ .Values.controllerManager.metrics.secure }}"
+            - "--enable-http2={{ .Values.controllerManager.enableHttp2 }}"
+            {{- if .Values.controllerManager.watchedNamespaces }}
+            - "--watched-namespaces={{ .Values.controllerManager.watchedNamespaces }}"
+            {{- end }}
+            {{- if .Values.controllerManager.ingressAnnotation }}
+            - "--ingress-annotation={{ .Values.controllerManager.ingressAnnotation }}"
+            {{- end }}
+            {{- if .Values.controllerManager.ingressControllerService }}
+            - "--ingress-controller-service={{ .Values.controllerManager.ingressControllerService }}"
+            {{- end }}
+            {{- if .Values.extraArgs }}
+            {{- toYaml .Values.extraArgs | nindent 12 }}
+            {{- end }}
+          ports:
+            {{- if ne .Values.controllerManager.metrics.bindAddress "0" }}
+            - name: metrics
+              containerPort: {{ trimPrefix ":" .Values.controllerManager.metrics.bindAddress | atoi }}
+              protocol: TCP
+            {{- end }}
+            - name: health
+              containerPort: {{ trimPrefix ":" .Values.controllerManager.health.bindAddress | atoi }}
+              protocol: TCP
+          {{- if .Values.livenessProbe.httpGet }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: health # Use the named port 'health'
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.httpGet }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.httpGet.path }}
+              port: health # Use the named port 'health'
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.env }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
+          # {{- if .Values.configFile.enabled }}
+          # volumeMounts:
+          #   - name: config
+          #     mountPath: {{ .Values.configFile.mountPath }}
+          #     subPath: {{ .Values.configFile.subPath }}
+          # {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      # {{- if .Values.configFile.enabled }}
+      # volumes:
+      #   - name: config
+      #     configMap:
+      #       name: {{ .Values.configFile.configMapName | default (include "kic.fullname" .) }}
+      #       items:
+      #         - key: {{ .Values.configFile.subPath }}
+      #           path: {{ .Values.configFile.subPath }}
+      # {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
