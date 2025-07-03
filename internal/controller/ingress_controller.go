@@ -33,11 +33,11 @@ import (
 
 const (
 	coreDNSConfigMapName      = "coredns"
-	coreDNSConfigMapNamespace    = "kube-system"
-	corefileKey                  = "Corefile"
-	rewriteRuleFormat            = "rewrite name %s %s\n"
-	managedRulesBeginMarker      = "# BEGIN IngressReconciler managed rules"
-	managedRulesEndMarker        = "# END IngressReconciler managed rules"
+	coreDNSConfigMapNamespace = "kube-system"
+	corefileKey               = "Corefile"
+	rewriteRuleFormat         = "rewrite name %s %s\n"
+	managedRulesBeginMarker   = "# BEGIN IngressReconciler managed rules"
+	managedRulesEndMarker     = "# END IngressReconciler managed rules"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -257,7 +257,7 @@ func (r *IngressReconciler) injectRewriteRules(corefile, newRules string) string
 			// Then append the new block
 			// Ensure there's a newline if corefile was not empty and didn't end with one
 			if corefile != "" && !strings.HasSuffix(strings.TrimSpace(corefile), "\n") && !strings.HasSuffix(newCorefileContent.String(), "\n") {
-				//This check might be redundant if lines always get \n
+				// This check might be redundant if lines always get \n
 			}
 			// If corefile is empty, newCorefileContent will be empty here.
 			// If corefile is not empty, it will have content.
