@@ -1,5 +1,5 @@
 {{- $metricsEnabled := ne .Values.controllerManager.metrics.bindAddress "0" -}}
-{{- $serviceExplicitlyEnabled := eq .Values.service.enabled true -}}
+{{- $serviceExplicitlyEnabled := eq .Values.service.enabled "true" -}}
 {{- $serviceAutoEnabled := and (eq .Values.service.enabled "auto") $metricsEnabled -}}
 {{- if or $serviceExplicitlyEnabled $serviceAutoEnabled -}}
 apiVersion: v1

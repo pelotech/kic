@@ -70,16 +70,6 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 3
 
-
-# If you need to mount a configmap as a file
-# configFile:
-#   enabled: false
-#   # mountPath: /etc/kic/config.yaml
-#   # subPath: config.yaml
-#   # configMapName: kic-config
-#   # data: |
-#   #   key: value
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: true

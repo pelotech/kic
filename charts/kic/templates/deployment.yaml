@@ -85,23 +85,8 @@ spec:
           env:
             {{- toYaml .Values.env | nindent 12 }}
           {{- end }}
-          # {{- if .Values.configFile.enabled }}
-          # volumeMounts:
-          #   - name: config
-          #     mountPath: {{ .Values.configFile.mountPath }}
-          #     subPath: {{ .Values.configFile.subPath }}
-          # {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-      # {{- if .Values.configFile.enabled }}
-      # volumes:
-      #   - name: config
-      #     configMap:
-      #       name: {{ .Values.configFile.configMapName | default (include "kic.fullname" .) }}
-      #       items:
-      #         - key: {{ .Values.configFile.subPath }}
-      #           path: {{ .Values.configFile.subPath }}
-      # {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
