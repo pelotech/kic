@@ -1,8 +1,8 @@
 # kic
 
-### version: 0.0.0<!-- x-release-please-version -->
+### version: 0.1.0<!-- x-release-please-version -->
 
-### appVersion: v0.0.0 <!-- x-release-please-version -->
+### appVersion: v0.1.0 <!-- x-release-please-version -->
 
 A Helm chart for Kubernetes Image Cacher (kic)
 
