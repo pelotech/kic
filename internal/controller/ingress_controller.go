@@ -33,9 +33,11 @@ import (
 
 const (
 	coreDNSConfigMapName      = "coredns"
-	coreDNSConfigMapNamespace = "kube-system"
-	corefileKey               = "Corefile"
-	rewriteRuleFormat         = "rewrite name %s %s\n"
+	coreDNSConfigMapNamespace    = "kube-system"
+	corefileKey                  = "Corefile"
+	rewriteRuleFormat            = "rewrite name %s %s\n"
+	managedRulesBeginMarker      = "# BEGIN IngressReconciler managed rules"
+	managedRulesEndMarker        = "# END IngressReconciler managed rules"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -144,39 +146,135 @@ func (r *IngressReconciler) updateCoreDNSConfigMap(ctx context.Context) error {
 }
 
 func (r *IngressReconciler) injectRewriteRules(corefile, newRules string) string {
-	// A simple strategy to inject rules.
-	// This finds the main server block and injects the rules.
-	// A more robust implementation would parse the Corefile more intelligently.
 	lines := strings.Split(corefile, "\n")
-	var newCorefile strings.Builder
-	inServerBlock := false
-	rewritesInjected := false
+	var newCorefileContent strings.Builder
+	startMarkerIndex := -1
+	endMarkerIndex := -1
 
-	for _, line := range lines {
+	for i, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, ".:53") {
-			inServerBlock = true
+		if strings.Contains(trimmedLine, managedRulesBeginMarker) && strings.Contains(trimmedLine, managedRulesEndMarker) {
+			// Case where both markers are on the same line
+			startMarkerIndex = i
+			endMarkerIndex = i
+			break
 		}
-
-		if inServerBlock && !rewritesInjected {
-			if strings.HasPrefix(trimmedLine, "kubernetes") {
-				newCorefile.WriteString(newRules)
-				newCorefile.WriteString("\n")
-				rewritesInjected = true
+		if strings.Contains(trimmedLine, managedRulesBeginMarker) {
+			// If we already found a start, and this isn't a combined line, it might be a new block or error
+			// For simplicity, take the first begin marker
+			if startMarkerIndex == -1 {
+				startMarkerIndex = i
 			}
 		}
-		if !strings.HasPrefix(trimmedLine, "rewrite name") {
-			newCorefile.WriteString(line)
-			newCorefile.WriteString("\n")
+		if strings.Contains(trimmedLine, managedRulesEndMarker) {
+			// Only set end if start is already found and this is a valid end
+			if startMarkerIndex != -1 && i >= startMarkerIndex {
+				endMarkerIndex = i
+				break // Found start and then end marker
+			}
 		}
 	}
 
-	// If the server block wasn't found, append at the end (less ideal).
-	if !rewritesInjected {
-		return corefile + "\n" + newRules
+	// Case 1: Markers found - replace content between them
+	if startMarkerIndex != -1 && endMarkerIndex != -1 && startMarkerIndex <= endMarkerIndex { // Allow same line for start/end
+		// Append lines before the start marker
+		for i := 0; i < startMarkerIndex; i++ {
+			newCorefileContent.WriteString(lines[i])
+			newCorefileContent.WriteString("\n")
+		}
+
+		// Add the new rules block
+		newCorefileContent.WriteString(managedRulesBeginMarker)
+		newCorefileContent.WriteString("\n")
+		if newRules != "" {
+			newCorefileContent.WriteString(strings.TrimSpace(newRules))
+			newCorefileContent.WriteString("\n")
+		}
+		newCorefileContent.WriteString(managedRulesEndMarker)
+		newCorefileContent.WriteString("\n")
+
+		// Append lines after the end marker
+		// If startMarkerIndex == endMarkerIndex, this loop should not run if endMarkerIndex+1 is out of bounds.
+		// It correctly skips if the block was the last part of the file.
+		for i := endMarkerIndex + 1; i < len(lines); i++ {
+			newCorefileContent.WriteString(lines[i])
+			newCorefileContent.WriteString("\n")
+		}
+	} else { // Case 2: Markers not found - try to inject or append
+		insertionPoint := -1
+		// Attempt to find a line containing "kubernetes" within a server block (heuristic)
+		// to insert before it.
+		// A more robust parser would be better, but this retains previous behavior.
+		inServerBlock := false
+		for i, line := range lines {
+			trimmedLine := strings.TrimSpace(line)
+			if strings.Contains(trimmedLine, ".:53") || strings.Contains(trimmedLine, "{") {
+				// Simplistic check for start of a server block or any block
+				inServerBlock = true
+			}
+			if inServerBlock && strings.Contains(line, "kubernetes") {
+				insertionPoint = i
+				break
+			}
+			// If exiting a block, reset inServerBlock if it's too simple a check
+			// This part is tricky without a proper parser. Assuming kubernetes is not deeply nested for now.
+			// if strings.Contains(trimmedLine, "}") {
+			// inServerBlock = false
+			// }
+		}
+
+		// Build the rules block string
+		var rulesBlock strings.Builder
+		rulesBlock.WriteString(managedRulesBeginMarker)
+		rulesBlock.WriteString("\n")
+		if newRules != "" {
+			rulesBlock.WriteString(strings.TrimSpace(newRules))
+			rulesBlock.WriteString("\n")
+		}
+		rulesBlock.WriteString(managedRulesEndMarker)
+		rulesBlock.WriteString("\n")
+
+		if insertionPoint != -1 {
+			// Insert before the found kubernetes line
+			for i := 0; i < insertionPoint; i++ {
+				newCorefileContent.WriteString(lines[i])
+				newCorefileContent.WriteString("\n")
+			}
+			newCorefileContent.WriteString(rulesBlock.String())
+			for i := insertionPoint; i < len(lines); i++ {
+				newCorefileContent.WriteString(lines[i])
+				newCorefileContent.WriteString("\n")
+			}
+		} else {
+			// Fallback: append to the end of the existing content
+			// First, write all original lines
+			for _, line := range lines {
+				if line != "" { // Avoid adding extra newlines if original had blank lines that split would preserve
+					newCorefileContent.WriteString(line)
+					newCorefileContent.WriteString("\n")
+				}
+			}
+			// Then append the new block
+			// Ensure there's a newline if corefile was not empty and didn't end with one
+			if corefile != "" && !strings.HasSuffix(strings.TrimSpace(corefile), "\n") && !strings.HasSuffix(newCorefileContent.String(), "\n") {
+				//This check might be redundant if lines always get \n
+			}
+			// If corefile is empty, newCorefileContent will be empty here.
+			// If corefile is not empty, it will have content.
+			// The rulesBlock already ends with a newline.
+			newCorefileContent.WriteString(rulesBlock.String())
+		}
 	}
 
-	return newCorefile.String()
+	// Normalize output: trim whitespace and ensure single trailing newline if not empty.
+	finalOutput := strings.TrimSpace(newCorefileContent.String())
+	if finalOutput != "" {
+		return finalOutput + "\n"
+	}
+	// If the corefile was empty and newRules was empty, markers are added, so it won't be ""
+	// This case is mostly for if original corefile was empty and rules were also empty.
+	// However, the logic above ensures markers are always added.
+	return ""
 }
 
 // SetupWithManager sets up the controller with the Manager.
