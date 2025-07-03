@@ -61,20 +61,19 @@ jobs:
             BUILD_VERSION="${{ needs.release-please.outputs.tag_name }}"
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-# TODO: add helm chart
 #      - name: Build dependencies Helm - kic
 #        uses: WyriHaximus/github-action-helm3@v4
 #        with:
 #          exec: helm dependency build charts/kick
-#      - name: Chart | Push - kick
-#        uses: appany/helm-oci-chart-releaser@v0.4.2
-#        with:
-#          name: kick
-#          repository: pelotech/charts
-#          tag: ${{ needs.release-please.outputs.release_version }}
-#          registry: ghcr.io
-#          registry_username: ${{ github.actor }}
-#          registry_password: ${{ secrets.github_token }}
+      - name: Chart | Push - kick
+        uses: appany/helm-oci-chart-releaser@v0.4.2
+        with:
+          name: kick
+          repository: pelotech/charts
+          tag: ${{ needs.release-please.outputs.release_version }}
+          registry: ghcr.io
+          registry_username: ${{ github.actor }}
+          registry_password: ${{ secrets.github_token }}
 
   publish-dev:
     if: ${{ ! fromJSON(needs.release-please.outputs.releases_created) }}

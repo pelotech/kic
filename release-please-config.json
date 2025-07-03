@@ -4,6 +4,13 @@
   "include-v-in-tag": true,
   "tag-separator": "/",
   "release-type": "simple",
+  "extra-files": [
+    {
+      "type": "generic",
+      "path": "charts/kic/Chart.yaml"
+    },
+    "charts/kic/README.md"
+  ],
   "packages": {
     ".": {}
     }
