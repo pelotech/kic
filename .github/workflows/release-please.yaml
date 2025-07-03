@@ -64,11 +64,11 @@ jobs:
 #      - name: Build dependencies Helm - kic
 #        uses: WyriHaximus/github-action-helm3@v4
 #        with:
-#          exec: helm dependency build charts/kick
-      - name: Chart | Push - kick
+#          exec: helm dependency build charts/kic
+      - name: Chart | Push - kic
         uses: appany/helm-oci-chart-releaser@v0.4.2
         with:
-          name: kick
+          name: kic
           repository: pelotech/charts
           tag: ${{ needs.release-please.outputs.release_version }}
           registry: ghcr.io
