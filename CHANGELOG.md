@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/pelotech/kic/compare/v0.1.1...v0.1.2) (2025-07-03)
+
+
+### Bug Fixes
+
+* add rbac, sa, and remove latest from default values for helm chart ([76420fc](https://github.com/pelotech/kic/commit/76420fc1d32b73ef092ee8024887e0970b858a92))
+
 ## [0.1.1](https://github.com/pelotech/kic/compare/v0.1.0...v0.1.1) (2025-07-03)
 
 
