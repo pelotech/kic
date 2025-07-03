@@ -33,11 +33,11 @@ import (
 
 const (
 	coreDNSConfigMapName      = "coredns"
-	coreDNSConfigMapNamespace = "kube-system"
-	corefileKey               = "Corefile"
-	rewriteRuleFormat         = "rewrite name %s %s\n"
-	managedRulesBeginMarker   = "# BEGIN IngressReconciler managed rules"
-	managedRulesEndMarker     = "# END IngressReconciler managed rules"
+	coreDNSConfigMapNamespace    = "kube-system"
+	corefileKey                  = "Corefile"
+	rewriteRuleFormat            = "rewrite name %s %s\n"
+	managedRulesBeginMarker      = "# BEGIN IngressReconciler managed rules"
+	managedRulesEndMarker        = "# END IngressReconciler managed rules"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -145,136 +145,128 @@ func (r *IngressReconciler) updateCoreDNSConfigMap(ctx context.Context) error {
 	return nil
 }
 
-func (r *IngressReconciler) injectRewriteRules(corefile, newRules string) string {
-	lines := strings.Split(corefile, "\n")
-	var newCorefileContent strings.Builder
-	startMarkerIndex := -1
-	endMarkerIndex := -1
+// injectRewriteRules takes the current Corefile content and a string of new rewrite rules,
+// and returns the modified Corefile content.
+// It aims to manage a block of rewrite rules demarcated by specific begin and end markers.
+func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules string) string {
+	corefileLines := strings.Split(corefileContent, "\n")
+	var resultBuilder strings.Builder
 
-	for i, line := range lines {
+	// --- Part 1: Find existing managed rule block markers ---
+	startIndex := -1
+	endIndex := -1
+
+	for i, line := range corefileLines {
 		trimmedLine := strings.TrimSpace(line)
+
+		// Check for combined begin and end markers on the same line
 		if strings.Contains(trimmedLine, managedRulesBeginMarker) && strings.Contains(trimmedLine, managedRulesEndMarker) {
-			// Case where both markers are on the same line
-			startMarkerIndex = i
-			endMarkerIndex = i
+			startIndex = i
+			endIndex = i
+			break // Found a self-contained block
+		}
+		// Check for the begin marker
+		if strings.Contains(trimmedLine, managedRulesBeginMarker) {
+			if startIndex == -1 { // Take the first occurrence
+				startIndex = i
+			}
+		}
+		// Check for the end marker, ensuring it's after a begin marker
+		if strings.Contains(trimmedLine, managedRulesEndMarker) {
+			if startIndex != -1 && i >= startIndex {
+				endIndex = i
+				break // Found a valid end for a previously started block
+			}
+		}
+	}
+
+	// --- Part 2: Construct the new managed rules block ---
+	var newManagedBlock strings.Builder
+	newManagedBlock.WriteString(managedRulesBeginMarker)
+	newManagedBlock.WriteString("\n")
+	if newRules != "" {
+		newManagedBlock.WriteString(strings.TrimSpace(newRules))
+		newManagedBlock.WriteString("\n")
+	}
+	newManagedBlock.WriteString(managedRulesEndMarker)
+	newManagedBlock.WriteString("\n")
+
+	// --- Part 3: Integrate the new block into the Corefile content ---
+
+	// Case 1: Valid markers found. Replace the content between them.
+	if startIndex != -1 && endIndex != -1 && startIndex <= endIndex {
+		// Append lines before the original managed block
+		for i := 0; i < startIndex; i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
+		}
+
+		// Add the new managed block
+		resultBuilder.WriteString(newManagedBlock.String())
+
+		// Append lines after the original managed block
+		for i := endIndex + 1; i < len(corefileLines); i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
+		}
+
+		// Normalize and return
+		finalOutput := strings.TrimSpace(resultBuilder.String())
+		if finalOutput != "" {
+			return finalOutput + "\n"
+		}
+		return "" // Should typically not be reached if markers are involved
+	}
+
+	// Case 2: Markers not found (or invalid). Inject the new block.
+	// Attempt to find an ideal insertion point (before 'kubernetes' plugin).
+	insertionPoint := -1
+	inServerBlockHeuristic := false // Simple heuristic to check if we are inside a server block ".:53 {}".
+	for i, line := range corefileLines {
+		trimmedLine := strings.TrimSpace(line)
+		if strings.Contains(trimmedLine, ".:53") || strings.Contains(trimmedLine, "{") {
+			inServerBlockHeuristic = true
+		}
+		// Prefer inserting before the 'kubernetes' plugin if found within a server block.
+		if inServerBlockHeuristic && strings.Contains(line, "kubernetes") {
+			insertionPoint = i
 			break
 		}
-		if strings.Contains(trimmedLine, managedRulesBeginMarker) {
-			// If we already found a start, and this isn't a combined line, it might be a new block or error
-			// For simplicity, take the first begin marker
-			if startMarkerIndex == -1 {
-				startMarkerIndex = i
-			}
-		}
-		if strings.Contains(trimmedLine, managedRulesEndMarker) {
-			// Only set end if start is already found and this is a valid end
-			if startMarkerIndex != -1 && i >= startMarkerIndex {
-				endMarkerIndex = i
-				break // Found start and then end marker
-			}
-		}
+		// Basic way to exit server block heuristic; a proper parser would be better.
+		// if strings.Contains(trimmedLine, "}") {
+		//	 inServerBlockHeuristic = false
+		// }
 	}
 
-	// Case 1: Markers found - replace content between them
-	if startMarkerIndex != -1 && endMarkerIndex != -1 && startMarkerIndex <= endMarkerIndex { // Allow same line for start/end
-		// Append lines before the start marker
-		for i := 0; i < startMarkerIndex; i++ {
-			newCorefileContent.WriteString(lines[i])
-			newCorefileContent.WriteString("\n")
+	if insertionPoint != -1 {
+		// Insert the new block at the determined insertion point.
+		for i := 0; i < insertionPoint; i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
 		}
-
-		// Add the new rules block
-		newCorefileContent.WriteString(managedRulesBeginMarker)
-		newCorefileContent.WriteString("\n")
-		if newRules != "" {
-			newCorefileContent.WriteString(strings.TrimSpace(newRules))
-			newCorefileContent.WriteString("\n")
+		resultBuilder.WriteString(newManagedBlock.String())
+		for i := insertionPoint; i < len(corefileLines); i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
 		}
-		newCorefileContent.WriteString(managedRulesEndMarker)
-		newCorefileContent.WriteString("\n")
-
-		// Append lines after the end marker
-		// If startMarkerIndex == endMarkerIndex, this loop should not run if endMarkerIndex+1 is out of bounds.
-		// It correctly skips if the block was the last part of the file.
-		for i := endMarkerIndex + 1; i < len(lines); i++ {
-			newCorefileContent.WriteString(lines[i])
-			newCorefileContent.WriteString("\n")
+	} else {
+		// Fallback: Append the new block to the end if no suitable insertion point was found.
+		// First, write all original lines if any
+		if strings.TrimSpace(corefileContent) != "" {
+			resultBuilder.WriteString(strings.TrimSuffix(corefileContent, "\n")) // Avoid double newline if original ends with one
+			resultBuilder.WriteString("\n")
 		}
-	} else { // Case 2: Markers not found - try to inject or append
-		insertionPoint := -1
-		// Attempt to find a line containing "kubernetes" within a server block (heuristic)
-		// to insert before it.
-		// A more robust parser would be better, but this retains previous behavior.
-		inServerBlock := false
-		for i, line := range lines {
-			trimmedLine := strings.TrimSpace(line)
-			if strings.Contains(trimmedLine, ".:53") || strings.Contains(trimmedLine, "{") {
-				// Simplistic check for start of a server block or any block
-				inServerBlock = true
-			}
-			if inServerBlock && strings.Contains(line, "kubernetes") {
-				insertionPoint = i
-				break
-			}
-			// If exiting a block, reset inServerBlock if it's too simple a check
-			// This part is tricky without a proper parser. Assuming kubernetes is not deeply nested for now.
-			// if strings.Contains(trimmedLine, "}") {
-			// inServerBlock = false
-			// }
-		}
-
-		// Build the rules block string
-		var rulesBlock strings.Builder
-		rulesBlock.WriteString(managedRulesBeginMarker)
-		rulesBlock.WriteString("\n")
-		if newRules != "" {
-			rulesBlock.WriteString(strings.TrimSpace(newRules))
-			rulesBlock.WriteString("\n")
-		}
-		rulesBlock.WriteString(managedRulesEndMarker)
-		rulesBlock.WriteString("\n")
-
-		if insertionPoint != -1 {
-			// Insert before the found kubernetes line
-			for i := 0; i < insertionPoint; i++ {
-				newCorefileContent.WriteString(lines[i])
-				newCorefileContent.WriteString("\n")
-			}
-			newCorefileContent.WriteString(rulesBlock.String())
-			for i := insertionPoint; i < len(lines); i++ {
-				newCorefileContent.WriteString(lines[i])
-				newCorefileContent.WriteString("\n")
-			}
-		} else {
-			// Fallback: append to the end of the existing content
-			// First, write all original lines
-			for _, line := range lines {
-				if line != "" { // Avoid adding extra newlines if original had blank lines that split would preserve
-					newCorefileContent.WriteString(line)
-					newCorefileContent.WriteString("\n")
-				}
-			}
-			// Then append the new block
-			// Ensure there's a newline if corefile was not empty and didn't end with one
-			if corefile != "" && !strings.HasSuffix(strings.TrimSpace(corefile), "\n") && !strings.HasSuffix(newCorefileContent.String(), "\n") {
-				// This check might be redundant if lines always get \n
-			}
-			// If corefile is empty, newCorefileContent will be empty here.
-			// If corefile is not empty, it will have content.
-			// The rulesBlock already ends with a newline.
-			newCorefileContent.WriteString(rulesBlock.String())
-		}
+		resultBuilder.WriteString(newManagedBlock.String())
 	}
 
-	// Normalize output: trim whitespace and ensure single trailing newline if not empty.
-	finalOutput := strings.TrimSpace(newCorefileContent.String())
+	// Normalize and return
+	finalOutput := strings.TrimSpace(resultBuilder.String())
 	if finalOutput != "" {
 		return finalOutput + "\n"
 	}
-	// If the corefile was empty and newRules was empty, markers are added, so it won't be ""
-	// This case is mostly for if original corefile was empty and rules were also empty.
-	// However, the logic above ensures markers are always added.
-	return ""
+	// This case handles if the original corefile was empty AND newRules were empty,
+	// in which case, only the markers are added.
+	return "" // Should effectively be markers if both inputs were empty.
 }
 
 // SetupWithManager sets up the controller with the Manager.

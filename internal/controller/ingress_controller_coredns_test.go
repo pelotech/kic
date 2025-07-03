@@ -195,7 +195,7 @@ func TestInjectRewriteRules(t *testing.T) {
 				managedRulesEndMarker + "\n",
 		},
 		{
-			name:     "Corefile with only markers, no newlines, add rules",
+			name: "Corefile with only markers, no newlines, add rules",
 			corefile: managedRulesBeginMarker + managedRulesEndMarker,
 			newRules: "rewrite name h c",
 			// This case normalizes the markers to have newlines
@@ -258,7 +258,7 @@ func TestInjectRewriteRules(t *testing.T) {
 				managedRulesEndMarker + "\n",
 		},
 		{
-			name:     "Corefile completely empty, inject new rules with markers",
+			name: "Corefile completely empty, inject new rules with markers",
 			corefile: "",
 			newRules: "rewrite name example example.com",
 			expectedCorefile: managedRulesBeginMarker + "\n" +
@@ -266,7 +266,7 @@ func TestInjectRewriteRules(t *testing.T) {
 				managedRulesEndMarker + "\n",
 		},
 		{
-			name:     "Corefile with only a comment, inject new rules with markers",
+			name: "Corefile with only a comment, inject new rules with markers",
 			corefile: "# This is a comment\n",
 			newRules: "rewrite name commented commented.svc",
 			// The current logic appends if no kubernetes directive is found
@@ -311,11 +311,13 @@ func TestInjectRewriteRules(t *testing.T) {
 				expected = ""
 			}
 
+
 			actual := r.injectRewriteRules(corefileInput, tt.newRules)
 			actual = strings.TrimSpace(actual) // Trim for comparison
 			if actual != "" {
 				actual += "\n"
 			}
+
 
 			if strings.TrimSpace(actual) != strings.TrimSpace(expected) {
 				t.Errorf("injectRewriteRules() for '%s':\nExpected:\n```\n%s```\nActual:\n```\n%s```", tt.name, expected, actual)
