@@ -30,7 +30,7 @@ A Helm chart for Kubernetes Image Cacher (kic)
 | fullnameOverride | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/pelotech/kic"` |  |
-| image.tag | string | `"latest"` |  |
+| image.tag | string | `""` |  |
 | imagePullSecrets | list | `[]` |  |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |
