@@ -36,6 +36,8 @@ const (
 	coreDNSConfigMapNamespace = "kube-system"
 	corefileKey               = "Corefile"
 	rewriteRuleFormat         = "rewrite name %s %s\n"
+	managedRulesBeginMarker   = "# BEGIN IngressReconciler managed rules"
+	managedRulesEndMarker     = "# END IngressReconciler managed rules"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -143,40 +145,128 @@ func (r *IngressReconciler) updateCoreDNSConfigMap(ctx context.Context) error {
 	return nil
 }
 
-func (r *IngressReconciler) injectRewriteRules(corefile, newRules string) string {
-	// A simple strategy to inject rules.
-	// This finds the main server block and injects the rules.
-	// A more robust implementation would parse the Corefile more intelligently.
-	lines := strings.Split(corefile, "\n")
-	var newCorefile strings.Builder
-	inServerBlock := false
-	rewritesInjected := false
+// injectRewriteRules takes the current Corefile content and a string of new rewrite rules,
+// and returns the modified Corefile content.
+// It aims to manage a block of rewrite rules demarcated by specific begin and end markers.
+func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules string) string {
+	corefileLines := strings.Split(corefileContent, "\n")
+	var resultBuilder strings.Builder
 
-	for _, line := range lines {
+	// --- Part 1: Find existing managed rule block markers ---
+	startIndex := -1
+	endIndex := -1
+
+	for i, line := range corefileLines {
 		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, ".:53") {
-			inServerBlock = true
-		}
 
-		if inServerBlock && !rewritesInjected {
-			if strings.HasPrefix(trimmedLine, "kubernetes") {
-				newCorefile.WriteString(newRules)
-				newCorefile.WriteString("\n")
-				rewritesInjected = true
+		// Check for combined begin and end markers on the same line
+		if strings.Contains(trimmedLine, managedRulesBeginMarker) && strings.Contains(trimmedLine, managedRulesEndMarker) {
+			startIndex = i
+			endIndex = i
+			break // Found a self-contained block
+		}
+		// Check for the begin marker
+		if strings.Contains(trimmedLine, managedRulesBeginMarker) {
+			if startIndex == -1 { // Take the first occurrence
+				startIndex = i
 			}
 		}
-		if !strings.HasPrefix(trimmedLine, "rewrite name") {
-			newCorefile.WriteString(line)
-			newCorefile.WriteString("\n")
+		// Check for the end marker, ensuring it's after a begin marker
+		if strings.Contains(trimmedLine, managedRulesEndMarker) {
+			if startIndex != -1 && i >= startIndex {
+				endIndex = i
+				break // Found a valid end for a previously started block
+			}
 		}
 	}
 
-	// If the server block wasn't found, append at the end (less ideal).
-	if !rewritesInjected {
-		return corefile + "\n" + newRules
+	// --- Part 2: Construct the new managed rules block ---
+	var newManagedBlock strings.Builder
+	newManagedBlock.WriteString(managedRulesBeginMarker)
+	newManagedBlock.WriteString("\n")
+	if newRules != "" {
+		newManagedBlock.WriteString(strings.TrimSpace(newRules))
+		newManagedBlock.WriteString("\n")
+	}
+	newManagedBlock.WriteString(managedRulesEndMarker)
+	newManagedBlock.WriteString("\n")
+
+	// --- Part 3: Integrate the new block into the Corefile content ---
+
+	// Case 1: Valid markers found. Replace the content between them.
+	if startIndex != -1 && endIndex != -1 && startIndex <= endIndex {
+		// Append lines before the original managed block
+		for i := 0; i < startIndex; i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
+		}
+
+		// Add the new managed block
+		resultBuilder.WriteString(newManagedBlock.String())
+
+		// Append lines after the original managed block
+		for i := endIndex + 1; i < len(corefileLines); i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
+		}
+
+		// Normalize and return
+		finalOutput := strings.TrimSpace(resultBuilder.String())
+		if finalOutput != "" {
+			return finalOutput + "\n"
+		}
+		return "" // Should typically not be reached if markers are involved
 	}
 
-	return newCorefile.String()
+	// Case 2: Markers not found (or invalid). Inject the new block.
+	// Attempt to find an ideal insertion point (before 'kubernetes' plugin).
+	insertionPoint := -1
+	inServerBlockHeuristic := false // Simple heuristic to check if we are inside a server block ".:53 {}".
+	for i, line := range corefileLines {
+		trimmedLine := strings.TrimSpace(line)
+		if strings.Contains(trimmedLine, ".:53") || strings.Contains(trimmedLine, "{") {
+			inServerBlockHeuristic = true
+		}
+		// Prefer inserting before the 'kubernetes' plugin if found within a server block.
+		if inServerBlockHeuristic && strings.Contains(line, "kubernetes") {
+			insertionPoint = i
+			break
+		}
+		// Basic way to exit server block heuristic; a proper parser would be better.
+		// if strings.Contains(trimmedLine, "}") {
+		//	 inServerBlockHeuristic = false
+		// }
+	}
+
+	if insertionPoint != -1 {
+		// Insert the new block at the determined insertion point.
+		for i := 0; i < insertionPoint; i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
+		}
+		resultBuilder.WriteString(newManagedBlock.String())
+		for i := insertionPoint; i < len(corefileLines); i++ {
+			resultBuilder.WriteString(corefileLines[i])
+			resultBuilder.WriteString("\n")
+		}
+	} else {
+		// Fallback: Append the new block to the end if no suitable insertion point was found.
+		// First, write all original lines if any
+		if strings.TrimSpace(corefileContent) != "" {
+			resultBuilder.WriteString(strings.TrimSuffix(corefileContent, "\n")) // Avoid double newline if original ends with one
+			resultBuilder.WriteString("\n")
+		}
+		resultBuilder.WriteString(newManagedBlock.String())
+	}
+
+	// Normalize and return
+	finalOutput := strings.TrimSpace(resultBuilder.String())
+	if finalOutput != "" {
+		return finalOutput + "\n"
+	}
+	// This case handles if the original corefile was empty AND newRules were empty,
+	// in which case, only the markers are added.
+	return "" // Should effectively be markers if both inputs were empty.
 }
 
 // SetupWithManager sets up the controller with the Manager.
