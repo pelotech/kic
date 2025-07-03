@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/pelotech/kic/compare/v0.1.0...v0.1.1) (2025-07-03)
+
+
+### Bug Fixes
+
+* typo for using kick instead of kic ([b8791db](https://github.com/pelotech/kic/commit/b8791db1bdfabf9286f20bf1b6a8b792819b6192))
+
 ## 0.1.0 (2025-07-03)
 
 
