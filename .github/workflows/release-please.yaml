@@ -66,7 +66,7 @@ jobs:
 #        with:
 #          exec: helm dependency build charts/kic
       - name: Chart | Push - kic
-        uses: appany/helm-oci-chart-releaser@v0.4.2
+        uses: appany/helm-oci-chart-releaser@v0.5.0
         with:
           name: kic
           repository: pelotech/charts
