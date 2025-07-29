@@ -291,6 +291,59 @@ func TestInjectRewriteRules(t *testing.T) {
 				"    health\n" +
 				"}\n",
 		},
+		{
+			name: "corefile without metadata, with expression rules",
+			corefile: ".:53 {\n" +
+				"    errors\n" +
+				"    health\n" +
+				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
+				"        pods insecure\n" +
+				"    }\n" +
+				"}\n",
+			newRules: "expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
+				"    rewrite name host1 service1\n" +
+				"}",
+			expectedCorefile: ".:53 {\n" +
+				"    errors\n" +
+				"    health\n" +
+				"    metadata\n" +
+				managedRulesBeginMarker + "\n" +
+				"expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
+				"    rewrite name host1 service1\n" +
+				"}\n" +
+				managedRulesEndMarker + "\n" +
+				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
+				"        pods insecure\n" +
+				"    }\n" +
+				"}\n",
+		},
+		{
+			name: "corefile with metadata, with expression rules",
+			corefile: ".:53 {\n" +
+				"    errors\n" +
+				"    health\n" +
+				"    metadata\n" +
+				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
+				"        pods insecure\n" +
+				"    }\n" +
+				"}\n",
+			newRules: "expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
+				"    rewrite name host1 service1\n" +
+				"}",
+			expectedCorefile: ".:53 {\n" +
+				"    errors\n" +
+				"    health\n" +
+				"    metadata\n" +
+				managedRulesBeginMarker + "\n" +
+				"expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
+				"    rewrite name host1 service1\n" +
+				"}\n" +
+				managedRulesEndMarker + "\n" +
+				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
+				"        pods insecure\n" +
+				"    }\n" +
+				"}\n",
+		},
 	}
 
 	r := &IngressReconciler{} // Dummy reconciler for this test
