@@ -22,6 +22,8 @@ linters:
     - unparam
     - unused
   settings:
+    cyclop:
+      max-complexity: 32
     revive:
       rules:
         - name: comment-spacings
