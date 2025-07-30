@@ -23,7 +23,7 @@ linters:
     - unused
   settings:
     gocyclo:
-      min-complexity: 32
+      min-complexity: 20
     revive:
       rules:
         - name: comment-spacings
