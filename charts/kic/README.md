@@ -15,7 +15,8 @@ A Helm chart for Kubernetes Image Cacher (kic)
 | autoscaling.maxReplicas | int | `100` |  |
 | autoscaling.minReplicas | int | `1` |  |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
-| controllerManager | object | `{"enableHttp2":false,"health":{"bindAddress":":8081"},"ingressAnnotation":"","ingressControllerService":"controller.nginx.svc.cluster.local","leaderElect":false,"metrics":{"bindAddress":":8080","secure":false},"watchedNamespaces":""}` | Controller manager specific settings |
+| controllerManager | object | `{"corednsExcludedNamespaces":"","enableHttp2":false,"health":{"bindAddress":":8081"},"ingressAnnotation":"","ingressControllerService":"controller.nginx.svc.cluster.local","leaderElect":false,"metrics":{"bindAddress":":8080","secure":false},"watchedNamespaces":""}` | Controller manager specific settings |
+| controllerManager.corednsExcludedNamespaces | string | `""` | Comma-separated list of namespaces to ignore custom rewrite rules. |
 | controllerManager.enableHttp2 | bool | `false` | Enable HTTP2 for metrics and webhook servers. |
 | controllerManager.health | object | `{"bindAddress":":8081"}` | Health probe settings |
 | controllerManager.health.bindAddress | string | `":8081"` | Address to bind health probe endpoint to. |
