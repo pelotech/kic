@@ -306,10 +306,10 @@ func TestInjectRewriteRules(t *testing.T) {
 			expectedCorefile: ".:53 {\n" +
 				"    errors\n" +
 				"    health\n" +
+				"    metadata\n" +
 				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
 				"        pods insecure\n" +
 				"    }\n" +
-				"    metadata\n" +
 				managedRulesBeginMarker + "\n" +
 				"expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
 				"    rewrite name host1 service1\n" +

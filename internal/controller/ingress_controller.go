@@ -232,13 +232,35 @@ func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules 
 
 	// 3. Ensure the 'metadata' plugin is present if needed.
 	needsMetadata := strings.Contains(newRules, "expression")
-	// Check the updated content for the metadata plugin.
 	hasMetadata := strings.Contains(updatedCorefile, "metadata")
 
 	finalCorefile := updatedCorefile
 	if needsMetadata && !hasMetadata {
-		// If metadata is needed but not present, inject it before our managed block.
-		finalCorefile = strings.Replace(updatedCorefile, managedRulesBeginMarker, "    metadata\n"+managedRulesBeginMarker, 1)
+		// If metadata is needed but not present, inject it before the kubernetes plugin.
+		lines := strings.Split(updatedCorefile, "\n")
+		kubernetesLine := -1
+		for i, line := range lines {
+			if strings.Contains(line, "kubernetes") {
+				kubernetesLine = i
+				break
+			}
+		}
+
+		if kubernetesLine != -1 {
+			var builder strings.Builder
+			builder.WriteString(strings.Join(lines[:kubernetesLine], "\n"))
+			if builder.Len() > 0 {
+				builder.WriteString("\n")
+			}
+			// Inject metadata with the same indentation as the kubernetes line.
+			indent := strings.Repeat(" ", len(lines[kubernetesLine])-len(strings.TrimLeft(lines[kubernetesLine], " ")))
+			builder.WriteString(indent + "metadata\n")
+			builder.WriteString(strings.Join(lines[kubernetesLine:], "\n"))
+			finalCorefile = builder.String()
+		} else {
+			// Fallback: if kubernetes plugin is not found, inject it before the managed block.
+			finalCorefile = strings.Replace(updatedCorefile, managedRulesBeginMarker, "    metadata\n"+managedRulesBeginMarker, 1)
+		}
 	}
 
 	// 4. Normalize and return the final content.
