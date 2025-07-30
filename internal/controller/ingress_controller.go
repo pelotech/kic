@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -162,145 +163,73 @@ func (r *IngressReconciler) updateCoreDNSConfigMap(ctx context.Context) error {
 }
 
 // injectRewriteRules takes the current Corefile content and a string of new rewrite rules,
-// and returns the modified Corefile content.
-// It aims to manage a block of rewrite rules demarcated by specific begin and end markers.
+// and returns the modified Corefile content. It uses a regex-based approach to manage a
+// demarcated block of rules.
 func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules string) string {
-	corefileLines := strings.Split(corefileContent, "\n")
-	var resultBuilder strings.Builder
-
-	// --- Part 1: Find existing managed rule block markers ---
-	startIndex := -1
-	endIndex := -1
-
-	for i, line := range corefileLines {
-		trimmedLine := strings.TrimSpace(line)
-
-		// Check for combined begin and end markers on the same line
-		if strings.Contains(trimmedLine, managedRulesBeginMarker) && strings.Contains(trimmedLine, managedRulesEndMarker) {
-			startIndex = i
-			endIndex = i
-			break // Found a self-contained block
-		}
-		// Check for the begin marker
-		if strings.Contains(trimmedLine, managedRulesBeginMarker) {
-			if startIndex == -1 { // Take the first occurrence
-				startIndex = i
-			}
-		}
-		// Check for the end marker, ensuring it's after a begin marker
-		if strings.Contains(trimmedLine, managedRulesEndMarker) {
-			if startIndex != -1 && i >= startIndex {
-				endIndex = i
-				break // Found a valid end for a previously started block
-			}
-		}
-	}
-
-	// --- Part 2: Construct the new managed rules block ---
+	// 1. Prepare the new managed block that should be in the Corefile.
 	var newManagedBlock strings.Builder
-	newManagedBlock.WriteString(managedRulesBeginMarker)
-	newManagedBlock.WriteString("\n")
+	newManagedBlock.WriteString(managedRulesBeginMarker + "\n")
 	if newRules != "" {
-		newManagedBlock.WriteString(strings.TrimSpace(newRules))
-		newManagedBlock.WriteString("\n")
+		newManagedBlock.WriteString(strings.TrimSpace(newRules) + "\n")
 	}
 	newManagedBlock.WriteString(managedRulesEndMarker)
-	newManagedBlock.WriteString("\n")
+	blockToAdd := newManagedBlock.String()
 
-	// --- Part 3: Integrate the new block into the Corefile content ---
+	// 2. Define a regex to find an existing managed block.
+	// The `(?s)` flag allows `.` to match newlines.
+	re := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(managedRulesBeginMarker) + `.*` + regexp.QuoteMeta(managedRulesEndMarker) + `\n?`)
 
-	// Check if metadata plugin is required and missing
-	needsMetadata := strings.Contains(newRules, "expression")
-	hasMetadata := false
-	for _, line := range corefileLines {
-		if strings.TrimSpace(line) == "metadata" {
-			hasMetadata = true
-			break
-		}
-	}
-
-	// Case 1: Valid markers found. Replace the content between them.
-	if startIndex != -1 && endIndex != -1 && startIndex <= endIndex {
-		// Append lines before the original managed block
-		for i := 0; i < startIndex; i++ {
-			resultBuilder.WriteString(corefileLines[i])
-			resultBuilder.WriteString("\n")
-		}
-
-		// Add metadata plugin if needed and not present
-		if needsMetadata && !hasMetadata {
-			resultBuilder.WriteString("    metadata\n")
-		}
-
-		// Add the new managed block
-		resultBuilder.WriteString(newManagedBlock.String())
-
-		// Append lines after the original managed block
-		for i := endIndex + 1; i < len(corefileLines); i++ {
-			resultBuilder.WriteString(corefileLines[i])
-			resultBuilder.WriteString("\n")
-		}
-
-		// Normalize and return
-		finalOutput := strings.TrimSpace(resultBuilder.String())
-		if finalOutput != "" {
-			return finalOutput + "\n"
-		}
-		return "" // Should typically not be reached if markers are involved
-	}
-
-	// Case 2: Markers not found (or invalid). Inject the new block.
-	// Attempt to find an ideal insertion point (before 'kubernetes' plugin).
-	insertionPoint := -1
-	inServerBlockHeuristic := false // Simple heuristic to check if we are inside a server block ".:53 {}".
-	for i, line := range corefileLines {
-		trimmedLine := strings.TrimSpace(line)
-		if strings.Contains(trimmedLine, ".:53") || strings.Contains(trimmedLine, "{") {
-			inServerBlockHeuristic = true
-		}
-		// Prefer inserting before the 'kubernetes' plugin if found within a server block.
-		if inServerBlockHeuristic && strings.Contains(line, "kubernetes") {
-			insertionPoint = i
-			break
-		}
-		// Basic way to exit server block heuristic; a proper parser would be better.
-		// if strings.Contains(trimmedLine, "}") {
-		//	 inServerBlockHeuristic = false
-		// }
-	}
-
-	if insertionPoint != -1 {
-		// Insert the new block at the determined insertion point.
-		for i := 0; i < insertionPoint; i++ {
-			resultBuilder.WriteString(corefileLines[i])
-			resultBuilder.WriteString("\n")
-		}
-		if needsMetadata && !hasMetadata {
-			resultBuilder.WriteString("    metadata\n")
-		}
-		resultBuilder.WriteString(newManagedBlock.String())
-		for i := insertionPoint; i < len(corefileLines); i++ {
-			resultBuilder.WriteString(corefileLines[i])
-			resultBuilder.WriteString("\n")
-		}
+	var updatedCorefile string
+	if re.MatchString(corefileContent) {
+		// Case 1: An existing block is found. Replace it with the new one.
+		updatedCorefile = re.ReplaceAllString(corefileContent, blockToAdd+"\n")
 	} else {
-		// Fallback: Append the new block to the end if no suitable insertion point was found.
-		// First, write all original lines if any
-		if strings.TrimSpace(corefileContent) != "" {
-			resultBuilder.WriteString(strings.TrimSuffix(corefileContent, "\n")) // Avoid double newline if original ends with one
-			resultBuilder.WriteString("\n")
+		// Case 2: No existing block found. We need to inject it.
+		// We'll try to inject it right before the 'kubernetes' plugin for neatness.
+		lines := strings.Split(corefileContent, "\n")
+		insertionPoint := -1
+		for i, line := range lines {
+			if strings.Contains(line, "kubernetes") {
+				insertionPoint = i
+				break
+			}
 		}
-		resultBuilder.WriteString(newManagedBlock.String())
+
+		var newCorefileBuilder strings.Builder
+		if insertionPoint != -1 {
+			// Inject before the 'kubernetes' plugin.
+			newCorefileBuilder.WriteString(strings.Join(lines[:insertionPoint], "\n") + "\n")
+			newCorefileBuilder.WriteString(blockToAdd + "\n")
+			newCorefileBuilder.WriteString(strings.Join(lines[insertionPoint:], "\n"))
+		} else {
+			// Fallback: Append to the end of the file.
+			trimmedContent := strings.TrimSpace(corefileContent)
+			if trimmedContent != "" {
+				newCorefileBuilder.WriteString(trimmedContent)
+				newCorefileBuilder.WriteString("\n")
+			}
+			newCorefileBuilder.WriteString(blockToAdd)
+		}
+		updatedCorefile = newCorefileBuilder.String()
 	}
 
-	// Normalize and return
-	finalOutput := strings.TrimSpace(resultBuilder.String())
+	// 3. Ensure the 'metadata' plugin is present if needed.
+	needsMetadata := strings.Contains(newRules, "expression")
+	// Check the updated content for the metadata plugin.
+	hasMetadata := strings.Contains(updatedCorefile, "metadata")
+
+	finalCorefile := updatedCorefile
+	if needsMetadata && !hasMetadata {
+		// If metadata is needed but not present, inject it before our managed block.
+		finalCorefile = strings.Replace(updatedCorefile, managedRulesBeginMarker, "    metadata\n"+managedRulesBeginMarker, 1)
+	}
+
+	// 4. Normalize and return the final content.
+	finalOutput := strings.TrimSpace(finalCorefile)
 	if finalOutput != "" {
 		return finalOutput + "\n"
 	}
-	// This case handles if the original corefile was empty AND newRules were empty,
-	// in which case, only the markers are added.
-	return "" // Should effectively be markers if both inputs were empty.
+	return ""
 }
 
 // SetupWithManager sets up the controller with the Manager.
