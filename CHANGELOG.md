@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/pelotech/kic/compare/v0.1.2...v0.2.0) (2025-07-30)
+
+
+### Features
+
+* allow excluding namespaces fromCoreDNS rewrites. ([#18](https://github.com/pelotech/kic/issues/18)) ([f9c4b6e](https://github.com/pelotech/kic/commit/f9c4b6e7cb323a4a8a93d92ee7068ec662689d61))
+
+
+### Bug Fixes
+
+* **controller:** Simplify injectRewriteRules function ([#20](https://github.com/pelotech/kic/issues/20)) ([d56ef09](https://github.com/pelotech/kic/commit/d56ef09c8efd62e380fa5f393fca28855c8933e2))
+* **deps:** update appany/helm-oci-chart-releaser action to v0.5.0 ([#16](https://github.com/pelotech/kic/issues/16)) ([b657ea5](https://github.com/pelotech/kic/commit/b657ea5f98b64263ddd58510672d42bbb98124f2))
+* **deps:** update module github.com/onsi/gomega to v1.38.0 ([#17](https://github.com/pelotech/kic/issues/17)) ([4dccdf4](https://github.com/pelotech/kic/commit/4dccdf4f45227a01891623bf93dff2bb5fc6ddcb))
+
 ## [0.1.2](https://github.com/pelotech/kic/compare/v0.1.1...v0.1.2) (2025-07-03)
 
 
