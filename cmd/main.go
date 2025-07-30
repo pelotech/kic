@@ -92,7 +92,7 @@ func main() {
 		"A comma-separated list of namespaces to watch for Ingresses. If empty, all namespaces are watched.")
 	flag.StringVar(&ingressAnnotation, "ingress-annotation", "",
 		"The annotation to look for on Ingresses. If not set, all Ingresses are considered.")
-	flag.StringVar(&ingressControllerService, "ingress-controller-service", "controller.nginx.svc.cluster.local",
+	flag.StringVar(&ingressControllerService, "ingress-controller-service", "ingress-nginx-controller.ingress-nginx.svc.cluster.local",
 		"The fully qualified domain name of the ingress controller service.")
 	flag.StringVar(&coreDNSExcludedNamespaces, "coredns-excluded-namespaces", "",
 		"A comma-separated list of namespaces to exclude from CoreDNS rewrite rules.")

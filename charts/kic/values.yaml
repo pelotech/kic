@@ -48,7 +48,7 @@ controllerManager:
   # -- Annotation to look for on Ingresses. Empty means all Ingresses.
   ingressAnnotation: ""
   # -- Fully qualified domain name of the ingress controller service.
-  ingressControllerService: "controller.nginx.svc.cluster.local" # Default from main.go
+  ingressControllerService: "ingress-nginx-controller.ingress-nginx.svc.cluster.local" # Default from main.go
   # -- Enable HTTP2 for metrics and webhook servers.
   enableHttp2: false
 
