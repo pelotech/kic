@@ -47,6 +47,7 @@ type IngressReconciler struct {
 	Scheme                       *runtime.Scheme
 	IngressAnnotation            string
 	IngressControllerServiceName string
+	CoreDNSExcludedNamespaces    []string
 }
 
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
@@ -126,7 +127,22 @@ func (r *IngressReconciler) updateCoreDNSConfigMap(ctx context.Context) error {
 
 	// Update the Corefile
 	originalCorefile := coreDNSConfigMap.Data[corefileKey]
-	updatedCorefile := r.injectRewriteRules(originalCorefile, newRewriteRules.String())
+
+	rulesString := newRewriteRules.String()
+	// If there are excluded namespaces, wrap the rules in an expression
+	if len(r.CoreDNSExcludedNamespaces) > 0 && rulesString != "" {
+		// Format each namespace as a quoted string
+		quotedNamespaces := make([]string, len(r.CoreDNSExcludedNamespaces))
+		for i, ns := range r.CoreDNSExcludedNamespaces {
+			quotedNamespaces[i] = fmt.Sprintf("'%s'", ns)
+		}
+		// Create the CEL expression
+		expression := fmt.Sprintf("!(label('kubernetes/client-namespace') in [%s])", strings.Join(quotedNamespaces, ", "))
+		// Wrap the rules in the expression block
+		rulesString = fmt.Sprintf("expression \"%s\" {\n%s}\n", expression, strings.TrimSpace(rulesString))
+	}
+
+	updatedCorefile := r.injectRewriteRules(originalCorefile, rulesString)
 
 	// Only update if the content has changed
 	if originalCorefile == updatedCorefile {
@@ -193,12 +209,27 @@ func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules 
 
 	// --- Part 3: Integrate the new block into the Corefile content ---
 
+	// Check if metadata plugin is required and missing
+	needsMetadata := strings.Contains(newRules, "expression")
+	hasMetadata := false
+	for _, line := range corefileLines {
+		if strings.TrimSpace(line) == "metadata" {
+			hasMetadata = true
+			break
+		}
+	}
+
 	// Case 1: Valid markers found. Replace the content between them.
 	if startIndex != -1 && endIndex != -1 && startIndex <= endIndex {
 		// Append lines before the original managed block
 		for i := 0; i < startIndex; i++ {
 			resultBuilder.WriteString(corefileLines[i])
 			resultBuilder.WriteString("\n")
+		}
+
+		// Add metadata plugin if needed and not present
+		if needsMetadata && !hasMetadata {
+			resultBuilder.WriteString("    metadata\n")
 		}
 
 		// Add the new managed block
@@ -243,6 +274,9 @@ func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules 
 		for i := 0; i < insertionPoint; i++ {
 			resultBuilder.WriteString(corefileLines[i])
 			resultBuilder.WriteString("\n")
+		}
+		if needsMetadata && !hasMetadata {
+			resultBuilder.WriteString("    metadata\n")
 		}
 		resultBuilder.WriteString(newManagedBlock.String())
 		for i := insertionPoint; i < len(corefileLines); i++ {

@@ -43,6 +43,9 @@ spec:
             {{- if .Values.controllerManager.watchedNamespaces }}
             - "--watched-namespaces={{ .Values.controllerManager.watchedNamespaces }}"
             {{- end }}
+            {{- if .Values.controllerManager.corednsExcludedNamespaces }}
+            - "--coredns-excluded-namespaces={{ .Values.controllerManager.corednsExcludedNamespaces }}"
+            {{- end }}
             {{- if .Values.controllerManager.ingressAnnotation }}
             - "--ingress-annotation={{ .Values.controllerManager.ingressAnnotation }}"
             {{- end }}

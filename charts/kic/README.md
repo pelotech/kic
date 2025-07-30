@@ -15,12 +15,13 @@ A Helm chart for Kubernetes Image Cacher (kic)
 | autoscaling.maxReplicas | int | `100` |  |
 | autoscaling.minReplicas | int | `1` |  |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
-| controllerManager | object | `{"enableHttp2":false,"health":{"bindAddress":":8081"},"ingressAnnotation":"","ingressControllerService":"controller.nginx.svc.cluster.local","leaderElect":false,"metrics":{"bindAddress":":8080","secure":false},"watchedNamespaces":""}` | Controller manager specific settings |
+| controllerManager | object | `{"corednsExcludedNamespaces":"","enableHttp2":false,"health":{"bindAddress":":8081"},"ingressAnnotation":"","ingressControllerService":"ingress-nginx-controller.ingress-nginx.svc.cluster.local","leaderElect":false,"metrics":{"bindAddress":":8080","secure":false},"watchedNamespaces":""}` | Controller manager specific settings |
+| controllerManager.corednsExcludedNamespaces | string | `""` | Comma-separated list of namespaces to ignore custom rewrite rules. |
 | controllerManager.enableHttp2 | bool | `false` | Enable HTTP2 for metrics and webhook servers. |
 | controllerManager.health | object | `{"bindAddress":":8081"}` | Health probe settings |
 | controllerManager.health.bindAddress | string | `":8081"` | Address to bind health probe endpoint to. |
 | controllerManager.ingressAnnotation | string | `""` | Annotation to look for on Ingresses. Empty means all Ingresses. |
-| controllerManager.ingressControllerService | string | `"controller.nginx.svc.cluster.local"` | Fully qualified domain name of the ingress controller service. |
+| controllerManager.ingressControllerService | string | `"ingress-nginx-controller.ingress-nginx.svc.cluster.local"` | Fully qualified domain name of the ingress controller service. |
 | controllerManager.metrics | object | `{"bindAddress":":8080","secure":false}` | Metrics settings |
 | controllerManager.metrics.bindAddress | string | `":8080"` | Address to bind metrics endpoint to. Set to "0" to disable. |
 | controllerManager.metrics.secure | bool | `false` | Whether to serve metrics securely (HTTPS). Requires certs if true and bindAddress is not "0". |

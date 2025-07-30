@@ -43,10 +43,12 @@ controllerManager:
     bindAddress: ":8081" # Default from main.go
   # -- Comma-separated list of namespaces to watch. Empty means all namespaces.
   watchedNamespaces: ""
+  # -- Comma-separated list of namespaces to ignore custom rewrite rules.
+  corednsExcludedNamespaces: ""
   # -- Annotation to look for on Ingresses. Empty means all Ingresses.
   ingressAnnotation: ""
   # -- Fully qualified domain name of the ingress controller service.
-  ingressControllerService: "controller.nginx.svc.cluster.local" # Default from main.go
+  ingressControllerService: "ingress-nginx-controller.ingress-nginx.svc.cluster.local" # Default from main.go
   # -- Enable HTTP2 for metrics and webhook servers.
   enableHttp2: false
 

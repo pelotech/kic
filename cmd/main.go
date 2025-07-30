@@ -68,6 +68,7 @@ func main() {
 	var watchedNamespaces string
 	var ingressAnnotation string
 	var ingressControllerService string
+	var coreDNSExcludedNamespaces string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -91,8 +92,11 @@ func main() {
 		"A comma-separated list of namespaces to watch for Ingresses. If empty, all namespaces are watched.")
 	flag.StringVar(&ingressAnnotation, "ingress-annotation", "",
 		"The annotation to look for on Ingresses. If not set, all Ingresses are considered.")
-	flag.StringVar(&ingressControllerService, "ingress-controller-service", "controller.nginx.svc.cluster.local",
+	flag.StringVar(&ingressControllerService, "ingress-controller-service",
+		"ingress-nginx-controller.ingress-nginx.svc.cluster.local",
 		"The fully qualified domain name of the ingress controller service.")
+	flag.StringVar(&coreDNSExcludedNamespaces, "coredns-excluded-namespaces", "",
+		"A comma-separated list of namespaces to exclude from CoreDNS rewrite rules.")
 
 	opts := zap.Options{
 		Development: true,
@@ -224,12 +228,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	var excludedNS []string
+	if coreDNSExcludedNamespaces != "" {
+		excludedNS = strings.Split(coreDNSExcludedNamespaces, ",")
+		for i := range excludedNS {
+			excludedNS[i] = strings.TrimSpace(excludedNS[i])
+		}
+	}
+
 	if err = (&controller.IngressReconciler{
 		Client:                       mgr.GetClient(),
 		Scheme:                       mgr.GetScheme(),
 		Log:                          ctrl.Log.WithName("controllers").WithName("Ingress"),
 		IngressAnnotation:            ingressAnnotation,
 		IngressControllerServiceName: ingressControllerService,
+		CoreDNSExcludedNamespaces:    excludedNS,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
 		os.Exit(1)
