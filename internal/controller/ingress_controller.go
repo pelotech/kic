@@ -188,37 +188,20 @@ func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules 
 		// We'll try to inject it right after the 'kubernetes' plugin for neatness.
 		lines := strings.Split(corefileContent, "\n")
 		insertionPoint := -1
+		braceCount := 0
+		inKubernetesBlock := false
 
-		kubernetesLine := -1
 		for i, line := range lines {
-			if strings.Contains(line, "kubernetes") {
-				kubernetesLine = i
-				break
+			if !inKubernetesBlock && strings.Contains(line, "kubernetes") {
+				inKubernetesBlock = true
 			}
-		}
 
-		if kubernetesLine != -1 {
-			// We found the line with the kubernetes plugin.
-			// Now, find the end of its configuration block.
-			if !strings.Contains(lines[kubernetesLine], "{") {
-				// It's a single-line declaration. Insert on the next line.
-				insertionPoint = kubernetesLine + 1
-			} else {
-				// It's a multi-line block. We need to find the matching closing brace.
-				openBraces := 0
-				for i := kubernetesLine; i < len(lines); i++ {
-					openBraces += strings.Count(lines[i], "{")
-					openBraces -= strings.Count(lines[i], "}")
-					if openBraces == 0 {
-						// We found the closing brace on this line. Insert after it.
-						insertionPoint = i + 1
-						break
-					}
-				}
-				if insertionPoint == -1 {
-					// This case means a malformed Corefile with unclosed braces.
-					// Fallback to appending at the end.
-					kubernetesLine = -1 // This will trigger the fallback logic.
+			if inKubernetesBlock {
+				braceCount += strings.Count(line, "{")
+				braceCount -= strings.Count(line, "}")
+				if braceCount <= 0 {
+					insertionPoint = i + 1
+					break
 				}
 			}
 		}
