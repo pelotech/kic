@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/pelotech/kic/compare/v0.2.0...v0.2.1) (2025-07-30)
+
+
+### Bug Fixes
+
+* Invert order of coredns config updates ([#21](https://github.com/pelotech/kic/issues/21)) ([a73542f](https://github.com/pelotech/kic/commit/a73542f4a2092c502c674b784b8694eebcc7b237))
+
 ## [0.2.0](https://github.com/pelotech/kic/compare/v0.1.2...v0.2.0) (2025-07-30)
 
 
