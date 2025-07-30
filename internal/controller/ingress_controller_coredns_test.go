@@ -47,12 +47,12 @@ func TestInjectRewriteRules(t *testing.T) {
 			expectedCorefile: ".:53 {\n" +
 				"    errors\n" +
 				"    health\n" +
-				managedRulesBeginMarker + "\n" +
-				managedRulesEndMarker + "\n" +
 				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
 				"        pods insecure\n" +
 				"        fallthrough in-addr.arpa ip6.arpa\n" +
 				"    }\n" +
+				managedRulesBeginMarker + "\n" +
+				managedRulesEndMarker + "\n" +
 				"    forward . /etc/resolv.conf\n" +
 				"    cache 30\n" +
 				"    loop\n" +
@@ -79,13 +79,13 @@ func TestInjectRewriteRules(t *testing.T) {
 			expectedCorefile: ".:53 {\n" +
 				"    errors\n" +
 				"    health\n" +
-				managedRulesBeginMarker + "\n" +
-				"rewrite name host1 service1\n" +
-				managedRulesEndMarker + "\n" +
 				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
 				"        pods insecure\n" +
 				"        fallthrough in-addr.arpa ip6.arpa\n" +
 				"    }\n" +
+				managedRulesBeginMarker + "\n" +
+				"rewrite name host1 service1\n" +
+				managedRulesEndMarker + "\n" +
 				"    forward . /etc/resolv.conf\n" +
 				"    cache 30\n" +
 				"    loop\n" +
@@ -233,14 +233,14 @@ func TestInjectRewriteRules(t *testing.T) {
 			expectedCorefile: ".:53 {\n" +
 				"    errors\n" +
 				"    health\n" +
-				managedRulesBeginMarker + "\n" +
-				"rewrite name k8s.block k8s.svc\n" +
-				managedRulesEndMarker + "\n" +
 				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
 				"        pods insecure\n" +
 				"        fallthrough in-addr.arpa ip6.arpa\n" +
 				"        ttl 30\n" +
 				"    }\n" +
+				managedRulesBeginMarker + "\n" +
+				"rewrite name k8s.block k8s.svc\n" +
+				managedRulesEndMarker + "\n" +
 				"    forward . /etc/resolv.conf\n" +
 				"}\n",
 		},
@@ -306,15 +306,15 @@ func TestInjectRewriteRules(t *testing.T) {
 			expectedCorefile: ".:53 {\n" +
 				"    errors\n" +
 				"    health\n" +
+				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
+				"        pods insecure\n" +
+				"    }\n" +
 				"    metadata\n" +
 				managedRulesBeginMarker + "\n" +
 				"expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
 				"    rewrite name host1 service1\n" +
 				"}\n" +
 				managedRulesEndMarker + "\n" +
-				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
-				"        pods insecure\n" +
-				"    }\n" +
 				"}\n",
 		},
 		{
@@ -334,14 +334,14 @@ func TestInjectRewriteRules(t *testing.T) {
 				"    errors\n" +
 				"    health\n" +
 				"    metadata\n" +
+				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
+				"        pods insecure\n" +
+				"    }\n" +
 				managedRulesBeginMarker + "\n" +
 				"expression \"!(label('kubernetes/client-namespace') in ['kube-system'])\" {\n" +
 				"    rewrite name host1 service1\n" +
 				"}\n" +
 				managedRulesEndMarker + "\n" +
-				"    kubernetes cluster.local in-addr.arpa ip6.arpa {\n" +
-				"        pods insecure\n" +
-				"    }\n" +
 				"}\n",
 		},
 	}

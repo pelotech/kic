@@ -185,22 +185,56 @@ func (r *IngressReconciler) injectRewriteRules(corefileContent string, newRules 
 		updatedCorefile = re.ReplaceAllString(corefileContent, blockToAdd+"\n")
 	} else {
 		// Case 2: No existing block found. We need to inject it.
-		// We'll try to inject it right before the 'kubernetes' plugin for neatness.
+		// We'll try to inject it right after the 'kubernetes' plugin for neatness.
 		lines := strings.Split(corefileContent, "\n")
 		insertionPoint := -1
+
+		kubernetesLine := -1
 		for i, line := range lines {
 			if strings.Contains(line, "kubernetes") {
-				insertionPoint = i
+				kubernetesLine = i
 				break
+			}
+		}
+
+		if kubernetesLine != -1 {
+			// We found the line with the kubernetes plugin.
+			// Now, find the end of its configuration block.
+			if !strings.Contains(lines[kubernetesLine], "{") {
+				// It's a single-line declaration. Insert on the next line.
+				insertionPoint = kubernetesLine + 1
+			} else {
+				// It's a multi-line block. We need to find the matching closing brace.
+				openBraces := 0
+				for i := kubernetesLine; i < len(lines); i++ {
+					openBraces += strings.Count(lines[i], "{")
+					openBraces -= strings.Count(lines[i], "}")
+					if openBraces == 0 {
+						// We found the closing brace on this line. Insert after it.
+						insertionPoint = i + 1
+						break
+					}
+				}
+				if insertionPoint == -1 {
+					// This case means a malformed Corefile with unclosed braces.
+					// Fallback to appending at the end.
+					kubernetesLine = -1 // This will trigger the fallback logic.
+				}
 			}
 		}
 
 		var newCorefileBuilder strings.Builder
 		if insertionPoint != -1 {
-			// Inject before the 'kubernetes' plugin.
-			newCorefileBuilder.WriteString(strings.Join(lines[:insertionPoint], "\n") + "\n")
-			newCorefileBuilder.WriteString(blockToAdd + "\n")
-			newCorefileBuilder.WriteString(strings.Join(lines[insertionPoint:], "\n"))
+			// Inject after the 'kubernetes' plugin block.
+			newCorefileBuilder.WriteString(strings.Join(lines[:insertionPoint], "\n"))
+			if newCorefileBuilder.Len() > 0 {
+				newCorefileBuilder.WriteString("\n")
+			}
+			newCorefileBuilder.WriteString(blockToAdd)
+			if insertionPoint < len(lines) {
+				newCorefileBuilder.WriteString("\n")
+				newCorefileBuilder.WriteString(strings.Join(lines[insertionPoint:], "\n"))
+			}
 		} else {
 			// Fallback: Append to the end of the file.
 			trimmedContent := strings.TrimSpace(corefileContent)
