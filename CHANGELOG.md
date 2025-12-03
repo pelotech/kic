@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.2](https://github.com/pelotech/kic/compare/v0.2.1...v0.2.2) (2025-12-03)
+
+
+### Bug Fixes
+
+* **deps:** update actions/checkout action to v6 ([#29](https://github.com/pelotech/kic/issues/29)) ([2c899ae](https://github.com/pelotech/kic/commit/2c899ae122301feb895abd9bc3b696555365c448))
+* **deps:** update actions/setup-go action to v6 ([#27](https://github.com/pelotech/kic/issues/27)) ([3b56461](https://github.com/pelotech/kic/commit/3b56461267d15ebe6d9fe956884e7e0a7e71987f))
+* **deps:** update golangci/golangci-lint-action action to v9 ([#28](https://github.com/pelotech/kic/issues/28)) ([a36866e](https://github.com/pelotech/kic/commit/a36866ee8157e1b7b471f3acb0b280d275ec85c8))
+
 ## [0.2.1](https://github.com/pelotech/kic/compare/v0.2.0...v0.2.1) (2025-07-30)
 
 
