@@ -1,8 +1,8 @@
 module github.com/pelotech/kic
 
-go 1.23.0
+go 1.25.0
 
-godebug default=go1.23
+godebug default=go1.25
 
 require (
 	github.com/go-logr/logr v1.4.3
@@ -69,7 +69,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
