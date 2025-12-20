@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3](https://github.com/pelotech/kic/compare/v0.2.2...v0.2.3) (2025-12-20)
+
+
+### Bug Fixes
+
+* **deps:** update docker.io/golang docker tag to v1.25 ([#24](https://github.com/pelotech/kic/issues/24)) ([79e74c0](https://github.com/pelotech/kic/commit/79e74c04de9d3b30502a3955f154608990a664aa))
+* **deps:** update kubernetes packages to v0.35.0 ([#4](https://github.com/pelotech/kic/issues/4)) ([5841565](https://github.com/pelotech/kic/commit/5841565535b4ef211f156845016e899d4426e914))
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.27.3 ([#25](https://github.com/pelotech/kic/issues/25)) ([4ecf1bc](https://github.com/pelotech/kic/commit/4ecf1bc13897e3a27dd09eacf397797333af0062))
+* **deps:** update module github.com/onsi/gomega to v1.38.3 ([#26](https://github.com/pelotech/kic/issues/26)) ([28f7603](https://github.com/pelotech/kic/commit/28f76031442893861e5ffea838f0f7349033c00c))
+* **deps:** update module sigs.k8s.io/controller-runtime to v0.22.4 ([#9](https://github.com/pelotech/kic/issues/9)) ([b84b103](https://github.com/pelotech/kic/commit/b84b103db507f2d5816e07cdff8a7036bb099215))
+* upgrade to Go 1.25 ([#32](https://github.com/pelotech/kic/issues/32)) ([f18fb56](https://github.com/pelotech/kic/commit/f18fb5696cb78118ed15e10262f2c2d29df7dccd))
+
 ## [0.2.2](https://github.com/pelotech/kic/compare/v0.2.1...v0.2.2) (2025-12-03)
 
 
